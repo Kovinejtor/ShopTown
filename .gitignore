@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VSCode settings (ako ih ne želiš u repo)
+.vscode/
+
+# Environment variables
+.env
+
+# LocalStack state (ako slučajno radiš van dockera)
+localstack/
+
+# Docker files
+*.pid
+*.log
+
+# Python virtual environment
+venv/
+env/
+
+# mypy, pylint, coverage
+.mypy_cache/
+.pytest_cache/
+coverage/
+
+# AWS credentials (sigurnosno ako koristiš ikad lokalno)
+*.pem
+
+# NoSQL Workbench exporti
+*.dml
+*.csv
+*.json
+
+# macOS / Windows junk
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+*.egg-info/
