@@ -30,7 +30,6 @@ coverage/
 
 # NoSQL Workbench exporti
 *.dml
-*.csv
 *.json
 
 # macOS / Windows junk

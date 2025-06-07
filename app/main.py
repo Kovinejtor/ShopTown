@@ -1,7 +1,10 @@
 from fastapi import FastAPI
-from models.product import Product
+from models.product import Product, ProductCreate
 from services.product_service import create_products_table, get_products_table
 from decimal import Decimal
+from utils.fill_dummy_data import populate_products_from_csv
+from utils.delete_all_products import delete_all_products
+import uuid
 
 app = FastAPI(title="ShopTown API")
 
@@ -11,17 +14,29 @@ def startup_event():
 
 @app.get("/")
 def root():
-    return {"message": "Dobrodošli u ShopTown!"}
+    return {"message": "Welcome to ShopTown!"}
+
+@app.post("/populate")
+def populate():
+    populate_products_from_csv(100) 
+    return {"message": "Dummy products added."}
+
+@app.delete("/delete-all-products")
+def delete_all():
+    delete_all_products()
+    return {"message": "All products deleted."}
 
 @app.post("/products")
-def create_product(product: Product):
+def create_product(product_data: ProductCreate):
     table = get_products_table()
 
-    item = product.dict()
-    item['price'] = Decimal(str(item['price'])) 
-    
+    item = product_data.dict()
+    item['id'] = str(uuid.uuid4())
+
+    item['price'] = Decimal(str(item['price']))
+
     table.put_item(Item=item)
-    return {"message": "Proizvod dodan!", "product": product}
+    return {"message": "Product added!", "product": item}
 
 @app.get("/products")
 def list_products():
