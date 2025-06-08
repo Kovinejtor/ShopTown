@@ -1,16 +1,20 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from models.product import Product, ProductCreate
-from services.product_service import create_products_table, get_products_table
+from services.user_service import ensure_users_table_exists, get_users_table
+from services.product_service import ensure_products_table_exists, get_products_table
+from services.order_service import ensure_orders_table_exists, purchase_product
 from decimal import Decimal
-from utils.fill_dummy_data import populate_products_from_csv
-from utils.delete_all_products import delete_all_products
+from utils.fill_dummy_data import populate_all
+from utils.delete_all_data import delete_all_items
 import uuid
 
 app = FastAPI(title="ShopTown API")
 
 @app.on_event("startup")
 def startup_event():
-    create_products_table()
+    ensure_users_table_exists()
+    ensure_products_table_exists()
+    ensure_orders_table_exists()
 
 @app.get("/")
 def root():
@@ -18,13 +22,15 @@ def root():
 
 @app.post("/populate")
 def populate():
-    populate_products_from_csv(100) 
-    return {"message": "Dummy products added."}
+    populate_all('utils/USER_MOCK_DATA.csv', 'utils/PRODUCT_MOCK_DATA.csv')
+    return {"message": "Users, Products and Orders populated!"}
 
-@app.delete("/delete-all-products")
+@app.delete("/delete-all")
 def delete_all():
-    delete_all_products()
-    return {"message": "All products deleted."}
+    delete_all_items('Products')
+    delete_all_items('Users')
+    delete_all_items('Orders')
+    return {"message": "All products, users and orders deleted."}
 
 @app.post("/products")
 def create_product(product_data: ProductCreate):
@@ -43,3 +49,16 @@ def list_products():
     table = get_products_table()
     response = table.scan()
     return {"products": response.get('Items', [])}
+
+@app.get("/users")
+def list_users():
+    table = get_users_table()
+    response = table.scan()
+    return {"users": response.get('Users', [])}
+
+@app.post("/purchase/{product_id}")
+def purchase(product_id: str, buyer_id: str = Query(...), bought_quantity: int = Query(1)):
+    order = purchase_product(buyer_id, product_id, bought_quantity)
+    return {"message": "Order was succesfull.", "order": order}
+
+

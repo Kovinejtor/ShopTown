@@ -1,7 +1,7 @@
 from core.databse import dynamodb
 
-def ensure_products_table_exists():
-    table_name = "Products"
+def ensure_users_table_exists():
+    table_name = "Users"
 
     existing_tables = dynamodb.meta.client.list_tables()["TableNames"]
     if table_name not in existing_tables:
@@ -25,5 +25,5 @@ def ensure_products_table_exists():
     else:
         print(f"Table {table_name} already exists.")
 
-def get_products_table():
-    return dynamodb.Table('Products')
+def get_users_table():
+    return dynamodb.Table('Users')
