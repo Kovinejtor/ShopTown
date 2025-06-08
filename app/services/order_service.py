@@ -76,3 +76,12 @@ def purchase_product(buyer_id, product_id, bought_quantity):
     orders_table.put_item(Item=order)
 
     return order
+
+
+def get_orders_by_buyer(buyer_id):
+    table = get_orders_table()
+
+    response = table.scan(
+        FilterExpression=Key('buyer_id').eq(buyer_id)
+    )
+    return response.get('Items', [])

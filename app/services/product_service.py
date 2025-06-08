@@ -1,4 +1,5 @@
 from core.databse import dynamodb
+from boto3.dynamodb.conditions import Key
 
 def ensure_products_table_exists():
     table_name = "Products"
@@ -27,3 +28,11 @@ def ensure_products_table_exists():
 
 def get_products_table():
     return dynamodb.Table('Products')
+
+def get_products_by_seller(seller_id):
+    table = get_products_table()
+
+    response = table.scan(
+        FilterExpression=Key('seller_id').eq(seller_id)
+    )
+    return response.get('Items', [])
