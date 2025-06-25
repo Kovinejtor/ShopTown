@@ -2,7 +2,8 @@ from fastapi import FastAPI, Query
 from models.product import Product, ProductCreate
 from services.user_service import ensure_users_table_exists, get_users_table
 from services.product_service import ensure_products_table_exists, get_products_table, get_products_by_seller
-from services.order_service import ensure_orders_table_exists, purchase_product, get_orders_by_buyer
+from services.order_service import ensure_orders_table_exists, purchase_product, get_orders_by_buyer, refund_order
+from services.review_service import ensure_reviews_table_exists
 from decimal import Decimal
 from utils.fill_dummy_data import populate_all
 from utils.delete_all_data import delete_all_items
@@ -15,6 +16,7 @@ def startup_event():
     ensure_users_table_exists()
     ensure_products_table_exists()
     ensure_orders_table_exists()
+    ensure_reviews_table_exists()
 
 @app.get("/")
 def root():
@@ -71,6 +73,12 @@ def list_products_by_seller(seller_id: str):
     products = get_products_by_seller(seller_id)
     return {"products": products}
 
+@app.post("/refund/{order_id}")
+def refund(order_id: str):
+    if order_id.startswith(":"):
+        order_id = order_id[1:]
+    return refund_order(order_id)
+
 @app.get("/products/filtered") # asc ili desc za sort
 def list_products_filtered(
     search: str = None,
@@ -110,8 +118,3 @@ def list_products_filtered(
         "total": len(items),
         "products": paginated_items
     }
-
-
-
-
-

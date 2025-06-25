@@ -4,3 +4,5 @@ boto3
 pydantic
 python-dotenv
 faker
+pydantic[email]
+python-dateutil

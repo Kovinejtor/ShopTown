@@ -1,5 +1,7 @@
 from core.databse import dynamodb
 from boto3.dynamodb.conditions import Key
+from models.product import Product
+from decimal import Decimal
 
 def ensure_products_table_exists():
     table_name = "Products"
@@ -31,8 +33,6 @@ def get_products_table():
 
 def get_products_by_seller(seller_id):
     table = get_products_table()
-
-    response = table.scan(
-        FilterExpression=Key('seller_id').eq(seller_id)
-    )
-    return response.get('Items', [])
+    response = table.scan(FilterExpression=Key('seller_id').eq(seller_id))
+    items = response.get('Items', [])
+    return [Product(**item) for item in items]
