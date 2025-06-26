@@ -6,3 +6,5 @@ python-dotenv
 faker
 pydantic[email]
 python-dateutil
+passlib[bcrypt]
+python-jose
