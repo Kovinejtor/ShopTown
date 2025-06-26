@@ -1,6 +1,6 @@
-from models.user import User
-from core.databse import dynamodb
-from core.security import hash_password, verify_password, create_access_token
+from app.models.user import User
+from app.core.databse import dynamodb
+from app.core.security import hash_password, verify_password, create_access_token
 import uuid
 
 def get_users_table():

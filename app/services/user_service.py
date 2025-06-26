@@ -1,4 +1,4 @@
-from core.databse import dynamodb
+from app.core.databse import dynamodb
 
 def ensure_users_table_exists():
     table_name = "Users"

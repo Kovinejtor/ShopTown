@@ -1,6 +1,6 @@
-from core.databse import dynamodb
+from app.core.databse import dynamodb
 from boto3.dynamodb.conditions import Key
-from models.product import Product
+from app.models.product import Product
 from decimal import Decimal
 
 def ensure_products_table_exists():

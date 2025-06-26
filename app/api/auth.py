@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from services.auth_service import register_user, authenticate_user
+from app.services.auth_service import register_user, authenticate_user
 
 router = APIRouter(prefix="/auth")
 

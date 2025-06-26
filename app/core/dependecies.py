@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
-from core.security import decode_token
-from models.user import User
+from app.core.security import decode_token
+from app.models.user import User
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from services.user_service import get_users_table
+from app.services.user_service import get_users_table
 
 bearer_scheme = HTTPBearer()
 

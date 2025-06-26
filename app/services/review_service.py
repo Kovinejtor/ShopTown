@@ -1,5 +1,5 @@
-from core.databse import dynamodb
-from models.review import Review
+from app.core.databse import dynamodb
+from app.models.review import Review
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 

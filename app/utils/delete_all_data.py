@@ -1,4 +1,4 @@
-from core.databse import dynamodb
+from app.core.databse import dynamodb
 
 def get_table(table_name):
     return dynamodb.Table(table_name)

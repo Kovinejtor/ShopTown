@@ -1,14 +1,14 @@
 import csv
 import uuid
 from decimal import Decimal
-from core.databse import dynamodb
+from app.core.databse import dynamodb
 import random
 from datetime import datetime, timedelta
-from models.product import Product
-from models.user import User
-from models.order import Order
-from models.review import Review
-from services.review_service import ensure_reviews_table_exists, create_review
+from app.models.product import Product
+from app.models.user import User
+from app.models.order import Order
+from app.models.review import Review
+from app.services.review_service import ensure_reviews_table_exists, create_review
 
 def ensure_table_exists(table_name, key_schema, attribute_definitions):
     existing_tables = dynamodb.meta.client.list_tables()["TableNames"]

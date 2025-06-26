@@ -1,17 +1,18 @@
 from fastapi import FastAPI, Query, Depends, HTTPException
-from models.product import Product, ProductCreate
-from services.user_service import ensure_users_table_exists, get_users_table
-from services.product_service import ensure_products_table_exists, get_products_table, get_products_by_seller
-from services.order_service import ensure_orders_table_exists, purchase_product, get_orders_by_buyer, refund_order
-from services.review_service import ensure_reviews_table_exists
+from app.models.product import Product, ProductCreate
+from app.services.user_service import ensure_users_table_exists, get_users_table
+from app.services.product_service import ensure_products_table_exists, get_products_table, get_products_by_seller
+from app.services.order_service import ensure_orders_table_exists, purchase_product, get_orders_by_buyer, refund_order
+from app.services.review_service import ensure_reviews_table_exists
 from decimal import Decimal
-from utils.fill_dummy_data import populate_all
-from utils.delete_all_data import delete_all_items
+from app.utils.fill_dummy_data import populate_all
+from app.utils.delete_all_data import delete_all_items
 import uuid
-from api import auth
-from core.dependecies import get_current_user
-from models.user import User
+from app.api import auth
+from app.core.dependecies import get_current_user
+from app.models.user import User
 from fastapi.security import HTTPBearer
+from app.services.recommender_service import get_recommendations_for_user
 
 security = HTTPBearer()
 
@@ -67,6 +68,12 @@ def list_products_filtered(
     paginated_items = items[start:end]
     return {"page": page, "limit": limit, "total": len(items), "products": paginated_items}
 
+@app.get("/recommendations/{user_id}", dependencies=[Depends(security)])
+def get_recommendations(user_id: str, current_user: User = Depends(get_current_user)):
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to recommendations")
+    recs = get_recommendations_for_user(user_id)
+    return {"recommendations": recs}
 
 # --- Protected Endpoints ---
 

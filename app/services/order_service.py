@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from core.databse import dynamodb
+from app.core.databse import dynamodb
 from boto3.dynamodb.conditions import Key
 from fastapi import HTTPException
 from dateutil import parser
-from models.order import Order
-from models.product import Product
+from app.models.order import Order
+from app.models.product import Product
 from datetime import timezone
 
 def ensure_orders_table_exists():
