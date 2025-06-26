@@ -179,7 +179,7 @@ def populate_mock_orders(n=500):
 
     print(f"Succesfully added {n} orders.")
 
-def populate_all(users_csv_path, products_csv_path, review_csv_path='utils/REVIEW_DATA.csv'):
+def populate_all(users_csv_path, products_csv_path, review_csv_path='app/utils/REVIEW_DATA.csv'):
     user_ids = populate_users_from_csv(users_csv_path)
     populate_products_from_csv(products_csv_path, user_ids, review_csv_path)
     populate_mock_orders(500)

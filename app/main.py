@@ -12,7 +12,8 @@ from app.api import auth
 from app.core.dependecies import get_current_user
 from app.models.user import User
 from fastapi.security import HTTPBearer
-from app.services.recommender_service import get_recommendations_for_user
+from app.services.collaborative_recommender_service import get_collaborative_based_recommendations
+from app.services.content_recommender_service import get_content_based_recommendations
 
 security = HTTPBearer()
 
@@ -34,7 +35,7 @@ def startup_event():
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to ShopTown!"}
+    return {"message": "Welcome to ShopTownaa!"}
 
 @app.get("/products")
 def list_products():
@@ -68,18 +69,30 @@ def list_products_filtered(
     paginated_items = items[start:end]
     return {"page": page, "limit": limit, "total": len(items), "products": paginated_items}
 
+@app.get("/recommendations/collaborative/{user_id}")
+def get_collaborative_recommendations(user_id: str):
+    recs = get_collaborative_based_recommendations(user_id)
+    return {"recommendations": recs}
+
+@app.get("/recommendations/content/{user_id}")
+def get_content_recommendations(user_id: str):
+    recs = get_content_based_recommendations(user_id)
+    return {"recommendations": recs}
+
+'''
 @app.get("/recommendations/{user_id}", dependencies=[Depends(security)])
 def get_recommendations(user_id: str, current_user: User = Depends(get_current_user)):
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Unauthorized access to recommendations")
     recs = get_recommendations_for_user(user_id)
     return {"recommendations": recs}
+'''
 
 # --- Protected Endpoints ---
 
-@app.post("/populate", dependencies=[Depends(security)])
-def populate(current_user: User = Depends(get_current_user)):
-    populate_all('utils/USER_MOCK_DATA.csv', 'utils/PRODUCT_MOCK_DATA.csv')
+@app.post("/populate")
+def populate():
+    populate_all('app/utils/USER_MOCK_DATA.csv', 'app/utils/PRODUCT_MOCK_DATA.csv')
     return {"message": "Users, Products and Orders populated!"}
 
 @app.delete("/delete-all", dependencies=[Depends(security)])
