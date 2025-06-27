@@ -11,3 +11,4 @@ faker
 click
 scikit-surprise==1.1.4
 scikit-learn
+xgboost

@@ -14,6 +14,7 @@ from app.models.user import User
 from fastapi.security import HTTPBearer
 from app.services.collaborative_recommender_service import get_collaborative_based_recommendations
 from app.services.content_recommender_service import get_content_based_recommendations
+from app.services.gradient_boost_recommender_service import get_gb_recommendations, train_gradient_boost_model
 
 security = HTTPBearer()
 
@@ -79,6 +80,18 @@ def get_content_recommendations(user_id: str):
     recs = get_content_based_recommendations(user_id)
     return {"recommendations": recs}
 
+@app.post("/recommendations/gradientboost/train")
+def train_gb_model():
+    model = train_gradient_boost_model()
+    if model is None:
+        return {"message": "Not enough data to train model."}
+    return {"message": "Model trained and saved."}
+
+@app.get("/recommendations/gradientboost/{user_id}")
+def get_gb_recommendations_route(user_id: str):
+    recs = get_gb_recommendations(user_id)
+    return {"recommendations": recs}
+
 '''
 @app.get("/recommendations/{user_id}", dependencies=[Depends(security)])
 def get_recommendations(user_id: str, current_user: User = Depends(get_current_user)):
@@ -139,3 +152,4 @@ def refund(order_id: str, current_user: User = Depends(get_current_user)):
     if order_id.startswith(":"):
         order_id = order_id[1:]
     return refund_order(order_id)
+
