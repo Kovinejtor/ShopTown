@@ -2,8 +2,8 @@ from fastapi import FastAPI, Query, Depends, HTTPException
 from app.models.product import Product, ProductCreate
 from app.services.user_service import ensure_users_table_exists, get_users_table
 from app.services.product_service import ensure_products_table_exists, get_products_table, get_products_by_seller
-from app.services.order_service import ensure_orders_table_exists, purchase_product, get_orders_by_buyer, refund_order
-from app.services.review_service import ensure_reviews_table_exists
+from app.services.order_service import ensure_orders_table_exists, purchase_product, get_orders_by_buyer, refund_order, get_orders_table
+from app.services.review_service import ensure_reviews_table_exists, get_reviews_table, create_review
 from decimal import Decimal
 from app.utils.fill_dummy_data import populate_all
 from app.utils.delete_all_data import delete_all_items
@@ -15,6 +15,8 @@ from fastapi.security import HTTPBearer
 from app.services.collaborative_recommender_service import get_collaborative_based_recommendations
 from app.services.content_recommender_service import get_content_based_recommendations
 from app.services.gradient_boost_recommender_service import get_gb_recommendations, train_gradient_boost_model
+from boto3.dynamodb.conditions import Key
+from app.models.review import Review
 
 security = HTTPBearer()
 
@@ -32,22 +34,53 @@ def startup_event():
     ensure_orders_table_exists()
     ensure_reviews_table_exists()
 
-# --- Public endpoints ---
 
+# --- Public endpoints(project specific like dummy data) ---
 @app.get("/")
 def root():
-    return {"message": "Welcome to ShopTownaa!"}
+    return {"message": "Welcome to ShopTown!"}
 
+@app.post("/populate")
+def populate():
+    populate_all('app/utils/USER_MOCK_DATA.csv', 'app/utils/PRODUCT_MOCK_DATA.csv')
+    return {"message": "Users, Products, Orders and Reviews populated!"}
+
+@app.delete("/delete-all")
+def delete_all():
+    delete_all_items('Products')
+    delete_all_items('Users')
+    delete_all_items('Orders')
+    delete_all_items('Reviews')
+    return {"message": "All products, users,reviews and orders deleted."}
+
+# --- Other public endpoints ---
 @app.get("/products")
 def list_products():
     table = get_products_table()
     response = table.scan()
     return {"products": response.get('Items', [])}
 
+@app.get("/products/{product_id}")
+def get_product_by_id(product_id: str):
+    table = get_products_table()
+    response = table.get_item(Key={'id': product_id})
+    item = response.get('Item')
+    if not item:
+        raise HTTPException(status_code=404, detail="Product not found.")
+    return item
+
 @app.get("/products/seller/{seller_id}")
 def list_products_by_seller(seller_id: str):
     products = get_products_by_seller(seller_id)
     return {"products": products}
+
+@app.get("/products/search")
+def search_products(keyword: str):
+    table = get_products_table()
+    response = table.scan()
+    items = response.get('Items', [])
+    matched = [item for item in items if keyword.lower() in item['name'].lower() or keyword.lower() in item['description'].lower()]
+    return {"products": matched}
 
 @app.get("/products/filtered")
 def list_products_filtered(
@@ -56,7 +89,9 @@ def list_products_filtered(
 ):
     table = get_products_table()
     response = table.scan()
+    print("Scan response:", response)
     items = response.get('Items', [])
+    print("Items:", items)
     if search:
         items = [item for item in items if search.lower() in item['name'].lower() or search.lower() in item['description'].lower()]
     if min_price is not None:
@@ -69,6 +104,49 @@ def list_products_filtered(
     end = start + limit
     paginated_items = items[start:end]
     return {"page": page, "limit": limit, "total": len(items), "products": paginated_items}
+
+@app.get("/reviews/user/{user_id}")
+def list_reviews_by_user(user_id: str):
+    table = get_reviews_table()
+    response = table.scan(FilterExpression=Key('user_id').eq(user_id))
+    return {"reviews": response.get('Items', [])}
+
+@app.get("/reviews/{review_id}")
+def get_review_by_id(review_id: str):
+    table = get_reviews_table()
+    response = table.get_item(Key={'review_id': review_id})
+    item = response.get('Item')
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="Review not found.")
+    
+    return {"review": item}
+
+@app.get("/reviews/product/{product_id}")
+def get_reviews_for_product(product_id: str):
+    products_table = get_products_table()
+    reviews_table = get_reviews_table()
+
+    # Get product to access review_ids
+    product_response = products_table.get_item(Key={'id': product_id})
+    product = product_response.get("Item")
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    review_ids = product.get("review_ids", [])
+
+    if not review_ids:
+        return {"reviews": []}
+
+    reviews = []
+    for rid in review_ids:
+        review_response = reviews_table.get_item(Key={'review_id': rid})
+        review = review_response.get("Item")
+        if review:
+            reviews.append(review)
+
+    return {"reviews": reviews}
 
 @app.get("/recommendations/collaborative/{user_id}")
 def get_collaborative_recommendations(user_id: str):
@@ -102,19 +180,6 @@ def get_recommendations(user_id: str, current_user: User = Depends(get_current_u
 '''
 
 # --- Protected Endpoints ---
-
-@app.post("/populate")
-def populate():
-    populate_all('app/utils/USER_MOCK_DATA.csv', 'app/utils/PRODUCT_MOCK_DATA.csv')
-    return {"message": "Users, Products and Orders populated!"}
-
-@app.delete("/delete-all", dependencies=[Depends(security)])
-def delete_all(current_user: User = Depends(get_current_user)):
-    delete_all_items('Products')
-    delete_all_items('Users')
-    delete_all_items('Orders')
-    return {"message": "All products, users and orders deleted."}
-
 @app.get("/me", dependencies=[Depends(security)])
 def read_profile(current_user: User = Depends(get_current_user)):
     return {"user_id": current_user.id, "email": current_user.email, "username": current_user.username}
@@ -129,6 +194,19 @@ def create_product(product_data: ProductCreate, current_user: User = Depends(get
     table.put_item(Item=item)
     return {"message": "Product added!", "product": item}
 
+@app.get("/products/low-stock", dependencies=[Depends(security)])
+def list_low_stock_products(threshold: int = 5, current_user: User = Depends(get_current_user)):
+    table = get_products_table()
+    response = table.scan()
+    items = response.get('Items', [])
+    low_stock = [item for item in items if int(item['stock']) <= threshold]
+    return {"products": low_stock}
+
+@app.post("/reviews")
+def create_review_route(review: Review):
+    create_review(review)
+    return {"message": "Review created."}
+
 @app.get("/users", dependencies=[Depends(security)])
 def list_users(current_user: User = Depends(get_current_user)):
     table = get_users_table()
@@ -139,6 +217,12 @@ def list_users(current_user: User = Depends(get_current_user)):
 def purchase(product_id: str, bought_quantity: int = Query(1), current_user: User = Depends(get_current_user)):
     order = purchase_product(current_user.id, product_id, bought_quantity)
     return {"message": "Order was succesfull.", "order": order}
+
+@app.get("/orders", dependencies=[Depends(security)])
+def list_all_orders(current_user: User = Depends(get_current_user)):
+    table = get_orders_table()
+    response = table.scan()
+    return {"orders": response.get('Items', [])}
 
 @app.get("/orders/{buyer_id}", dependencies=[Depends(security)])
 def list_orders_by_buyer(buyer_id: str, current_user: User = Depends(get_current_user)):
