@@ -363,26 +363,100 @@ This file defines all API endpoints of **ShopTown**, wires up routes, and connec
 - **Utils:** `utils/` handles dummy data, cleanup scripts.
 - **Security:** `core/security.py` + `core/dependencies.py` manage auth.
 
+## Recommendation Systems
+
+This project implements **three types of recommendation systems**:
+
+### 1. Collaborative Filtering (SVD)
+- **How it works:**
+  - Uses the `surprise` library’s SVD (Singular Value Decomposition).
+  - Learns *latent features* from the `Reviews` table (user_id, product_id, rating).
+  - Predicts how much a user will like an unrated product based on patterns in the entire user-product rating matrix.
+
+- **Simple example:**  
+  Suppose:
+User u1 rated Product p1: 4
+User u1 rated Product p2: 5
+User u2 rated Product p2: 3
+User u3 rated Product p1: 2
+
+The model learns that u1 tends to like products similar to p1 and p2, and predicts ratings for other products accordingly.
+
+---
+
+### 2. Content-Based Filtering (TF-IDF + Cosine Similarity)
+- **How it works:**  
+- Builds a TF-IDF matrix on product `name + description`.
+- Finds products most similar (textually) to what the user liked (rating >= 3).
+
+- **Simple example:**  
+If a user liked `Granola - Crunchy oats with honey`, they might be recommended `Honey Oat Bars - Sweet snack`, because of shared terms like *honey* and *oats*.
+
+---
+
+### 3. Gradient Boosting Regressor (XGBoost)
+- **How it works:**  
+- Trains an XGBoost regressor on:
+  - `price`
+  - encoded `seller_id`
+  - TF-IDF features from `name + description`
+- Predicts ratings for unseen products.
+
+- **Simple example:**  
+If user reviews show preference for mid-priced products from a certain seller, and descriptions mentioning *eco-friendly*, the model learns this pattern and predicts high ratings for similar future products.
+
+---
+
+### How to Use these Endpoints
+- `GET /recommendations/collaborative/{user_id}` → Get SVD-based recommendations.
+- `GET /recommendations/content/{user_id}` → Get content-based recommendations.
+- `POST /recommendations/gradientboost/train` → Train XGBoost model.
+- `GET /recommendations/gradientboost/{user_id}` → Get gradient-boost recommendations.
+
+
 ## Some FastAPI docs images
 
 ![start](images/start.png)
 
 ![start2](images/start2.png)
 
-![populate](images/populate.png)
+![1](images/1.png)
 
-![db](images/db.png)
+![2](images/2.png)
 
-![get_products](images/get_products.png)
+![3](images/3.png)
 
-![get_products_id](images/get_products_id.png)
+![4](images/4.png)
 
-![](images/.png)
+![5](images/5.png)
 
-![](images/.png)
+![6](images/6.png)
 
-![](images/.png)
+![7](images/7.png)
 
-![](images/.png)
+![8](images/8.png)
 
-![](images/example-output.png)
+![9](images/9.png)
+
+![10](images/10.png)
+
+![11](images/11.png)
+
+![12](images/12.png)
+
+![13](images/13.png)
+
+![14](images/14.png)
+
+![15](images/15.png)
+
+![16](images/16.png)
+
+![17](images/17.png)
+
+![18](images/18.png)
+
+![19](images/19.png)
+
+![20](images/20.png)
+...
