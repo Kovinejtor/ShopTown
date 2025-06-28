@@ -17,6 +17,7 @@ from app.services.content_recommender_service import get_content_based_recommend
 from app.services.gradient_boost_recommender_service import get_gb_recommendations, train_gradient_boost_model
 from boto3.dynamodb.conditions import Key
 from app.models.review import Review
+import re
 
 security = HTTPBearer()
 
@@ -34,8 +35,6 @@ def startup_event():
     ensure_orders_table_exists()
     ensure_reviews_table_exists()
 
-
-# --- Public endpoints(project specific like dummy data) ---
 @app.get("/")
 def root():
     return {"message": "Welcome to ShopTown!"}
@@ -60,6 +59,69 @@ def list_products():
     response = table.scan()
     return {"products": response.get('Items', [])}
 
+@app.get("/products/search")
+def search_products(keyword: str):
+    table = get_products_table()
+    response = table.scan()
+    items = response.get('Items', [])
+
+    def word_match(text: str, keyword: str):
+        return keyword.lower() in text.lower().split()
+
+    matched = [
+        item for item in items
+        if word_match(item['name'], keyword) or word_match(item['description'], keyword)
+    ]
+
+    return {"products": matched}
+
+@app.get("/products/filtered")
+def list_products_filtered(
+    search: str = None, min_price: float = None, max_price: float = None,
+    sort: str = "asc", page: int = 1, limit: int = 20
+):
+    table = get_products_table()
+    response = table.scan()
+    items = response.get('Items', [])
+
+    def word_match(text: str, keyword: str):
+        words = re.findall(r'\b\w+\b', text.lower())
+        return keyword.lower() in words
+
+    if search:
+        items = [
+            item for item in items
+            if word_match(item['name'], search) or word_match(item['description'], search)
+        ]
+
+    if min_price is not None:
+        items = [item for item in items if float(item['price']) >= min_price]
+
+    if max_price is not None:
+        items = [item for item in items if float(item['price']) <= max_price]
+
+    reverse = sort.lower() == "desc"
+    items.sort(key=lambda x: float(x['price']), reverse=reverse)
+
+    start = (page - 1) * limit
+    end = start + limit
+    paginated_items = items[start:end]
+
+    return {
+        "page": page,
+        "limit": limit,
+        "total": len(items),
+        "products": paginated_items
+    }
+
+@app.get("/products/low-stock", dependencies=[Depends(security)])
+def list_low_stock_products(threshold: int = 5, current_user: User = Depends(get_current_user)):
+    table = get_products_table()
+    response = table.scan()
+    items = response.get('Items', [])
+    low_stock = [item for item in items if int(item['stock']) <= threshold]
+    return {"products": low_stock}
+
 @app.get("/products/{product_id}")
 def get_product_by_id(product_id: str):
     table = get_products_table()
@@ -73,37 +135,6 @@ def get_product_by_id(product_id: str):
 def list_products_by_seller(seller_id: str):
     products = get_products_by_seller(seller_id)
     return {"products": products}
-
-@app.get("/products/search")
-def search_products(keyword: str):
-    table = get_products_table()
-    response = table.scan()
-    items = response.get('Items', [])
-    matched = [item for item in items if keyword.lower() in item['name'].lower() or keyword.lower() in item['description'].lower()]
-    return {"products": matched}
-
-@app.get("/products/filtered")
-def list_products_filtered(
-    search: str = None, min_price: float = None, max_price: float = None,
-    sort: str = "asc", page: int = 1, limit: int = 20
-):
-    table = get_products_table()
-    response = table.scan()
-    print("Scan response:", response)
-    items = response.get('Items', [])
-    print("Items:", items)
-    if search:
-        items = [item for item in items if search.lower() in item['name'].lower() or search.lower() in item['description'].lower()]
-    if min_price is not None:
-        items = [item for item in items if float(item['price']) >= min_price]
-    if max_price is not None:
-        items = [item for item in items if float(item['price']) <= max_price]
-    reverse = sort.lower() == "desc"
-    items.sort(key=lambda x: float(x['price']), reverse=reverse)
-    start = (page - 1) * limit
-    end = start + limit
-    paginated_items = items[start:end]
-    return {"page": page, "limit": limit, "total": len(items), "products": paginated_items}
 
 @app.get("/reviews/user/{user_id}")
 def list_reviews_by_user(user_id: str):
@@ -171,6 +202,7 @@ def get_gb_recommendations_route(user_id: str):
     return {"recommendations": recs}
 
 '''
+For example! I removed the option to check that the user id needs to be the same as the one checked so i could test better. On the "/orders/{buyer_id}" is shown
 @app.get("/recommendations/{user_id}", dependencies=[Depends(security)])
 def get_recommendations(user_id: str, current_user: User = Depends(get_current_user)):
     if user_id != current_user.id:
@@ -179,7 +211,6 @@ def get_recommendations(user_id: str, current_user: User = Depends(get_current_u
     return {"recommendations": recs}
 '''
 
-# --- Protected Endpoints ---
 @app.get("/me", dependencies=[Depends(security)])
 def read_profile(current_user: User = Depends(get_current_user)):
     return {"user_id": current_user.id, "email": current_user.email, "username": current_user.username}
@@ -194,16 +225,8 @@ def create_product(product_data: ProductCreate, current_user: User = Depends(get
     table.put_item(Item=item)
     return {"message": "Product added!", "product": item}
 
-@app.get("/products/low-stock", dependencies=[Depends(security)])
-def list_low_stock_products(threshold: int = 5, current_user: User = Depends(get_current_user)):
-    table = get_products_table()
-    response = table.scan()
-    items = response.get('Items', [])
-    low_stock = [item for item in items if int(item['stock']) <= threshold]
-    return {"products": low_stock}
-
-@app.post("/reviews")
-def create_review_route(review: Review):
+@app.post("/reviews", dependencies=[Depends(security)])
+def create_review_route(review: Review, current_user: User = Depends(get_current_user)):
     create_review(review)
     return {"message": "Review created."}
 
